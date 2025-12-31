@@ -11,16 +11,19 @@ st.set_page_config(page_title="雅思作文改分王", page_icon="💰")
 # --- 2. 核心功能函数定义 (修复缺失定义的问题) ---
 
 def upload_to_gemini(img_file):
-    """识图函数：将上传的图片转为文字"""
-    if "GEMINI_API_KEY" not in st.secrets:
-        st.error("未在 Secrets 中配置 GEMINI_API_KEY")
-        return ""
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('models/gemini-1.5-flash')
-    img = Image.open(img_file)
-    prompt = "你是一个专业的OCR助手。请精准提取图片中的所有英文文字，保持原有的换行格式，直接输出文字。"
-    response = model.generate_content([prompt, img])
-    return response.text
+    # ... (之前的代码)
+    # 尝试使用 models/ 前缀，这是目前最标准的写法
+    try:
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
+        img = Image.open(img_file)
+        response = model.generate_content(["请提取图中英文", img])
+        return response.text
+    except Exception as e:
+        # 如果 flash 找不到，回退到 pro 版本
+        model = genai.GenerativeModel('models/gemini-1.5-pro')
+        img = Image.open(img_file)
+        response = model.generate_content(["请提取图中英文", img])
+        return response.text
 
 
 def get_ielts_feedback(essay_content, api_key):
@@ -140,6 +143,5 @@ if st.button("🚀 开始批改并生成报告"):
                             st.write(f"**中文含义**: {m}")
             except Exception as e:
                 st.error(f"❌ 批改失败: {str(e)}")
-
 
 st.caption("© 2025 雅思 AI 批改助手")
