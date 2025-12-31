@@ -30,7 +30,11 @@ with st.sidebar:
 
     st.header("⚙️ 配置中心")
     # 为了方便你测试，这里保留 Key 输入框；以后你可以直接写在代码里隐藏
-    admin_api_key = st.secrets["DEEPSEEK_API_KEY"]
+    # 这样写：优先从系统后台读取 Key，读取不到才显示输入框
+    if "DEEPSEEK_API_KEY" in st.secrets:
+        admin_api_key = st.secrets["DEEPSEEK_API_KEY"]
+    else:
+        admin_api_key = st.sidebar.text_input("管理员 API Key", type="password")
 
     st.divider()
     st.markdown("### 🛒 购买激活码")
@@ -95,6 +99,7 @@ if st.button("🚀 开始批改并生成范文"):
 # 页脚
 st.caption("© 2025 雅思 AI 批改助手 | 稳定的自动化测试由 Pytest 提供支持")
 # -*- coding:utf-8 -*-
+
 
 
 
