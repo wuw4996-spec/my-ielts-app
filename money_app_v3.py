@@ -3,6 +3,27 @@ from openai import OpenAI
 import os
 
 
+# 在 st.title 之后增加
+
+st.markdown("""
+    <style>
+    /* 让按钮变成吸睛的亮橙色 */
+    .stButton>button {
+        width: 100%;
+        border-radius: 20px;
+        height: 3em;
+        background-color: #FF4B4B;
+        color: white;
+        font-weight: bold;
+        border: none;
+    }
+    /* 适配手机端的文字大小 */
+    .stTextArea textarea {
+        font-size: 16px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- 功能函数：读取卡密文件 ---
 def load_valid_keys():
     file_path = "keys.txt"
@@ -24,23 +45,21 @@ st.title("✍️ 雅思 AI 作文批改系统")
 # 侧边栏：管理与支付
 with st.sidebar:
     st.header("🔑 激活中心")
-    user_passcode = st.text_input("输入您的激活码", type="password", help="激活码可从客服处购买")
-
+    user_passcode = st.text_input("在此输入 8 位激活码", placeholder="例如：IELTS888")
+    
     st.divider()
-
-    st.header("⚙️ 配置中心")
-    # 为了方便你测试，这里保留 Key 输入框；以后你可以直接写在代码里隐藏
-    # 这样写：优先从系统后台读取 Key，读取不到才显示输入框
-    if "DEEPSEEK_API_KEY" in st.secrets:
-        admin_api_key = st.secrets["DEEPSEEK_API_KEY"]
-    else:
-        admin_api_key = st.sidebar.text_input("管理员 API Key", type="password")
-
-    st.divider()
-    st.markdown("### 🛒 购买激活码")
-    st.write("1元/次，即买即用")
-    st.info("联系微信号: `Qwernvvs` (备注: 买码)")
-    # st.image("wx_pay_qr.png") # 取消注释可以上传收款码图片
+    
+    # 重点：购买引导
+    st.markdown("### 🛒 没有激活码？")
+    st.write("只需 **1元/篇**，即可获得全维度批改 + 满分范文。")
+    
+    # 增加一个点击复制的体验（利用简单的 markdown）
+    wechat_id = "Qwernvvs" # 换成你的微信
+    st.code(wechat_id, language=None)
+    st.caption("👆长按上方微信号复制，加好友买码")
+    
+    if st.button("查看购买流程"):
+        st.info("1. 加微信 -> 2. 转账 -> 3. 自动/手动发码 -> 4. 粘贴批改")
 
 # 主界面：作文输入
 st.write("请输入您的雅思作文，AI 将按考官标准进行深度批改。")
@@ -69,14 +88,30 @@ if st.button("🚀 开始批改并生成范文"):
             try:
                 client = OpenAI(api_key=admin_api_key, base_url="https://api.deepseek.com")
 
-                prompt = f"""你是一位雅思资深考官。请对以下作文进行专业批改。
-                内容：{essay_content}
-
-                要求格式：
-                1. [Score] 给出总分和各项小分。
-                2. [Analysis] 针对 TR, CC, LR, GRA 四个维度详细点评。
-                3. [Suggestions] 指出文章中 3 个可以改进的具体地方。
-                4. [Sample] 提供一个 Band 9 的高分范文。
+                prompt = f"""你是一位严格的雅思写作前考官。请对以下作文进行专业测评。
+                内容如下：{essay_content}
+                
+                请严格按以下模块输出（使用 Markdown 格式）：
+                
+                ## 📊 测评成绩单
+                - **Overall Band Score: [分数]**
+                - Task Response: [分数]
+                - Coherence and Cohesion: [分数]
+                - Lexical Resource: [分数]
+                - Grammatical Range and Accuracy: [分数]
+                
+                ---
+                ## 📝 考官详细批改 (Detailed Feedback)
+                > 指出文章中最严重的 3 个逻辑或语法错误，并给出修改方案。
+                
+                ---
+                ## 💡 词汇与表达升级
+                - **初级表达**: [原文中的词] -> **高级替换**: [推荐词汇]
+                - **亮点句型**: [推荐一个适合本文的复杂句式]
+                
+                ---
+                ## 🏆 满分范文 (Band 9 Sample)
+                [请针对该题目写一篇高分示范]
                 """
 
                 response = client.chat.completions.create(
@@ -99,6 +134,7 @@ if st.button("🚀 开始批改并生成范文"):
 # 页脚
 st.caption("© 2025 雅思 AI 批改助手 | 稳定的自动化测试由 Pytest 提供支持")
 # -*- coding:utf-8 -*-
+
 
 
 
