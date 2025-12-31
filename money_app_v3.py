@@ -46,39 +46,33 @@ def load_valid_keys():
         return [line.strip() for line in f.readlines() if line.strip()]
 
 
+import google.generativeai as genai
+from PIL import Image
+
+
+def upload_to_gemini(img_file):
+    """调用 Gemini API 识别图片文字"""
+    # 1. 配置 API Key (从 Secrets 读取)
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+    # 2. 初始化模型
+    model = genai.GenerativeModel('gemini-1.5-flash')
+
+    # 3. 打开图片
+    img = Image.open(img_file)
+
+    # 4. 让 AI 提取文字
+    prompt = "请精准提取图片中的所有手写或打印文字。直接输出文字内容，不要包含任何多余的解释或说明。"
+    response = model.generate_content([prompt, img])
+
+    return response.text
+
 # --- 5. 侧边栏：激活中心与拍照 ---
 with st.sidebar:
     st.header("🔑 激活中心")
     user_passcode = st.text_input("在此输入 8 位激活码", placeholder="例如：IELTS888")
 
     st.divider()
-    st.subheader("📸 智能识图")
-
-    # 初始化 session_state 存储识别结果
-    if 'essay_content' not in st.session_state:
-        st.session_state.essay_content = ""
-
-    with st.expander("点击开启摄像头"):
-        picture = st.camera_input("请对准手写作文")
-
-        if picture:
-            img = Image.open(picture)
-            st.image(img, caption="图片已加载")
-
-            if st.button("🔍 提取手写文字"):
-                with st.spinner("正在辨认字迹..."):
-                    try:
-                        # 核心识图指令
-                        prompt = "Please transcribe the handwritten English text in this image. Only provide the transcribed text."
-                        response = gemini_model.generate_content([prompt, img])
-
-                        # 存入记忆并刷新
-                        st.session_state.essay_content = response.text
-                        st.success("识别完成！文字已同步。")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"识别失败: {e}")
-
 
     st.markdown("### 🛒 没有激活码？")
     st.write("只需 **1元/篇**，即可获得专业批改。")
@@ -88,6 +82,18 @@ with st.sidebar:
 
 # --- 6. 主界面：作文输入 (注意：这里退出了 sidebar 缩进) ---
 st.title("✍️ 雅思 AI 作文批改系统")
+# 将摄像头放在主页面，这样横屏或全屏时框会变大
+img_file = st.camera_input("请对准手写作文拍照（确保字迹清晰）")
+uploaded_file = st.file_uploader("或者从相册选择照片", type=['png', 'jpg', 'jpeg'])
+if img_file:
+    # 拍照后，显示一个提取按钮
+    if st.button("✨ 提取照片中的文字"):
+        with st.spinner("正在识别手写文字..."):
+            # 这里调用你之前的 Gemini 识别逻辑
+            text = upload_to_gemini(img_file)
+            st.session_state.essay_content = text
+            st.success("提取成功！文字已自动填入下方输入框。")
+
 st.write("请输入您的雅思作文，AI 将按考官标准进行深度批改。")
 
 # 如果拍照了，这里可以显示识别结果（目前先留空让用户贴，或后续接 OCR）
@@ -141,9 +147,3 @@ if st.button("🚀 开始批改并生成范文"):
                 st.error(f"❌ 错误: {str(e)}")
 
 st.caption("© 2025 雅思 AI 批改助手")
-
-
-
-
-
-
