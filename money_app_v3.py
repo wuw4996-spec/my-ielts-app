@@ -6,37 +6,42 @@ from PIL import Image
 
 # --- 1. 页面配置 (必须放在最前面) ---
 st.set_page_config(page_title="雅思作文改分王", page_icon="💰")
-# --- 初始化 Gemini (识图大脑) ---
-if "GEMINI_API_KEY" in st.secrets:
+
+
+# --- 2. 核心功能函数定义 (修复缺失定义的问题) ---
+
+def upload_to_gemini(img_file):
+    """识图函数：将上传的图片转为文字"""
+    if "GEMINI_API_KEY" not in st.secrets:
+        st.error("未在 Secrets 中配置 GEMINI_API_KEY")
+        return ""
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-
-# --- 2. 注入 CSS 样式 ---
-st.markdown("""
-    <style>
-    .stButton>button {
-        width: 100%;
-        border-radius: 20px;
-        height: 3em;
-        background-color: #FF4B4B;
-        color: white;
-        font-weight: bold;
-        border: none;
-    }
-    .stTextArea textarea { font-size: 16px !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 3. 核心配置：获取 API Key (修复标红的关键) ---
-# 优先从后台 Secrets 读取，如果没有则在侧边栏显示输入框
-if "DEEPSEEK_API_KEY" in st.secrets:
-    admin_api_key = st.secrets["DEEPSEEK_API_KEY"]
-else:
-    admin_api_key = st.sidebar.text_input("管理员 API Key (开发用)", type="password")
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    img = Image.open(img_file)
+    prompt = "你是一个专业的OCR助手。请精准提取图片中的所有英文文字，保持原有的换行格式，直接输出文字。"
+    response = model.generate_content([prompt, img])
+    return response.text
 
 
-# --- 4. 功能函数：读取卡密 ---
+def get_ielts_feedback(essay_content, api_key):
+    """批改函数：调用 DeepSeek 进行评分"""
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+    prompt = f"""你是一位严格的雅思写作前考官。请对以下作文进行专业测评：
+    {essay_content}
+    请按格式输出：## 📊 测评成绩单、## 📝 详细批改、## 💡 词汇升级、## 🏆 满分范文。"""
+
+    response = client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[
+            {"role": "system", "content": "你是一个专业的雅思作文批改专家。"},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response.choices[0].message.content
+
+
 def load_valid_keys():
+    """读取本地激活码文件"""
     file_path = "keys.txt"
     if not os.path.exists(file_path):
         with open(file_path, "w") as f:
@@ -46,104 +51,94 @@ def load_valid_keys():
         return [line.strip() for line in f.readlines() if line.strip()]
 
 
-import google.generativeai as genai
-from PIL import Image
+# --- 3. 样式注入 ---
+st.markdown("""
+    <style>
+    .stButton>button {
+        width: 100%;
+        border-radius: 20px;
+        height: 3em;
+        background-color: #FF4B4B;
+        color: white;
+        font-weight: bold;
+    }
+    .stTextArea textarea { font-size: 16px !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
+# --- 4. API Key 配置 ---
+admin_api_key = st.secrets.get("DEEPSEEK_API_KEY") or st.sidebar.text_input("管理员 API Key (开发用)", type="password")
 
-def upload_to_gemini(img_file):
-    """调用 Gemini API 识别图片文字"""
-    # 1. 配置 API Key (从 Secrets 读取)
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-
-    # 2. 初始化模型
-    model = genai.GenerativeModel('gemini-1.5-flash')
-
-    # 3. 打开图片
-    img = Image.open(img_file)
-
-    # 4. 让 AI 提取文字
-    prompt = "请精准提取图片中的所有手写或打印文字。直接输出文字内容，不要包含任何多余的解释或说明。"
-    response = model.generate_content([prompt, img])
-
-    return response.text
-
-# --- 5. 侧边栏：激活中心与拍照 ---
+# --- 5. 侧边栏：激活中心 ---
 with st.sidebar:
     st.header("🔑 激活中心")
     user_passcode = st.text_input("在此输入 8 位激活码", placeholder="例如：IELTS888")
-
     st.divider()
+    st.markdown("### 🛒 没有激活码？\n只需 **1元/篇**，即可获得专业批改。")
+    st.code("Qwernvvs", language=None)
+    st.caption("👆长按微信号复制，加好友买码")
 
-    st.markdown("### 🛒 没有激活码？")
-    st.write("只需 **1元/篇**，即可获得专业批改。")
-    wechat_id = "Qwernvvs"
-    st.code(wechat_id, language=None)
-    st.caption("👆长按上方微信号复制，加好友买码")
-
-# --- 6. 主界面：作文输入 (注意：这里退出了 sidebar 缩进) ---
+# --- 6. 主界面逻辑 ---
 st.title("✍️ 雅思 AI 作文批改系统")
-# 将摄像头放在主页面，这样横屏或全屏时框会变大
-img_file = st.camera_input("请对准手写作文拍照（确保字迹清晰）")
-uploaded_file = st.file_uploader("或者从相册选择照片", type=['png', 'jpg', 'jpeg'])
-if img_file:
-    # 拍照后，显示一个提取按钮
-    if st.button("✨ 提取照片中的文字"):
-        with st.spinner("正在识别手写文字..."):
-            # 这里调用你之前的 Gemini 识别逻辑
-            text = upload_to_gemini(img_file)
-            st.session_state.essay_content = text
-            st.success("提取成功！文字已自动填入下方输入框。")
 
-st.write("请输入您的雅思作文，AI 将按考官标准进行深度批改。")
+# 初始化 Session State (防止识别后文字因页面刷新消失)
+if 'essay_content' not in st.session_state:
+    st.session_state.essay_content = ""
 
-# 如果拍照了，这里可以显示识别结果（目前先留空让用户贴，或后续接 OCR）
-essay_content = st.text_area("作文正文:", height=350, placeholder="In terms of the table...")
+# A. 文件上传与 OCR 识别 (已修复之前的非法缩进)
+uploaded_file = st.file_uploader("📂 上传作文照片 (支持 JPG/PNG/JPEG)", type=['png', 'jpg', 'jpeg'])
 
-if st.button("🚀 开始批改并生成范文"):
-    # 逻辑检查
+if uploaded_file:
+    st.image(uploaded_file, caption="已上传的照片", width=300)
+    if st.button("🔍 提取照片中的文字"):
+        with st.spinner("AI 正在深度识别手写内容..."):
+            try:
+                # 调用定义好的识图函数
+                extracted_text = upload_to_gemini(uploaded_file)
+                st.session_state.essay_content = extracted_text
+                st.success("识别成功！内容已填入下方文本框。")
+            except Exception as e:
+                st.error(f"识别出错: {e}")
+
+# B. 文本编辑区 (自动同步 OCR 结果)
+essay_text = st.text_area(
+    "作文正文 (识别后可在此手动修改):",
+    value=st.session_state.essay_content,
+    height=350,
+    placeholder="在此输入或通过上方照片提取文字..."
+)
+
+# C. 验证并执行批改
+if st.button("🚀 开始批改并生成报告"):
     valid_keys = load_valid_keys()
 
     if not user_passcode:
         st.error("❗ 请先输入激活码！")
     elif user_passcode not in valid_keys:
-        st.error("❌ 激活码无效。请联系客服购买。")
+        st.error("❌ 激活码无效。")
     elif not admin_api_key:
-        st.error("❗ 管理员未配置 API Key。")
-    elif len(essay_content) < 100:
-        st.warning("⚠️ 作文内容过短，无法精准评分。")
+        st.error("❗ 未配置 DeepSeek API Key。")
+    elif len(essay_text) < 50:
+        st.warning("⚠️ 内容太少，请提供更完整的作文。")
     else:
         with st.spinner("🔍 正在连接 DeepSeek 考官大脑..."):
             try:
-                client = OpenAI(api_key=admin_api_key, base_url="https://api.deepseek.com")
-
-                prompt = f"""你是一位严格的雅思写作前考官。请对以下作文进行专业测评：
-                {essay_content}
-                请按格式输出：## 📊 测评成绩单、## 📝 详细批改、## 💡 词汇升级、## 🏆 满分范文。"""
-
-                response = client.chat.completions.create(
-                    model="deepseek-chat",
-                    messages=[
-                        {"role": "system", "content": "你是一个专业的雅思作文批改专家。"},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-
-                # 展示结果
+                # 调用定义好的批改函数
+                report = get_ielts_feedback(essay_text, admin_api_key)
                 st.success("✅ 批改报告已生成！")
                 st.balloons()
                 st.markdown("---")
-                st.markdown(response.choices[0].message.content)
+                st.markdown(report)
 
-                # 词汇实验室展示
+                # 词汇实验室
                 st.header("🏫 雅思高频词汇实验室")
                 col1, col2 = st.columns(2)
                 words = {"Alleviate": "缓解", "Fluctuate": "波动", "Detrimental": "有害的", "Pros and Cons": "利弊"}
                 for i, (w, m) in enumerate(words.items()):
                     with (col1 if i % 2 == 0 else col2):
                         with st.expander(f"📖 {w}"):
-                            st.write(m)
-
+                            st.write(f"**中文含义**: {m}")
             except Exception as e:
-                st.error(f"❌ 错误: {str(e)}")
+                st.error(f"❌ 批改失败: {str(e)}")
 
 st.caption("© 2025 雅思 AI 批改助手")
