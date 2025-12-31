@@ -16,7 +16,7 @@ def upload_to_gemini(img_file):
         st.error("未在 Secrets 中配置 GEMINI_API_KEY")
         return ""
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('models/gemini-1.5-flash')
     img = Image.open(img_file)
     prompt = "你是一个专业的OCR助手。请精准提取图片中的所有英文文字，保持原有的换行格式，直接输出文字。"
     response = model.generate_content([prompt, img])
@@ -140,5 +140,6 @@ if st.button("🚀 开始批改并生成报告"):
                             st.write(f"**中文含义**: {m}")
             except Exception as e:
                 st.error(f"❌ 批改失败: {str(e)}")
+
 
 st.caption("© 2025 雅思 AI 批改助手")
