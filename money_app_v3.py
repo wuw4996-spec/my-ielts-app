@@ -24,13 +24,13 @@ st.title("✍️ 雅思 AI 作文批改系统")
 # 侧边栏：管理与支付
 with st.sidebar:
     st.header("🔑 激活中心")
-    user_passcode = st.secrets["DEEPSEEK_API_KEY"]
+    user_passcode = st.text_input("输入您的激活码", type="password", help="激活码可从客服处购买")
 
     st.divider()
 
     st.header("⚙️ 配置中心")
     # 为了方便你测试，这里保留 Key 输入框；以后你可以直接写在代码里隐藏
-    admin_api_key = st.text_input("管理员 API Key", type="password")
+    admin_api_key = st.secrets["DEEPSEEK_API_KEY"]
 
     st.divider()
     st.markdown("### 🛒 购买激活码")
@@ -95,5 +95,6 @@ if st.button("🚀 开始批改并生成范文"):
 # 页脚
 st.caption("© 2025 雅思 AI 批改助手 | 稳定的自动化测试由 Pytest 提供支持")
 # -*- coding:utf-8 -*-
+
 
 
