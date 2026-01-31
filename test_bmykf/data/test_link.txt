@@ -1,0 +1,1 @@
+http://112.25.126.97:8380/cmservice/api/v1/channel/queryChannelIm?channelId=1177&servicetype=1&appid=1177000001&usertype=15&userId=13022172906&msisdn=13022172906&seq=1749812236524&hash=e2cf145243bcaa12b6c0cf59e8435118

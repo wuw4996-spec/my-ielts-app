@@ -1,0 +1,1 @@
+咪咕音乐统一门户PC端	http://112.25.126.97:8380/cmservice/api/v1/channel/queryChannelIm?channelId=1177&servicetype=1&appid=1177000001&usertype=15&userId=13022172906&msisdn=13022172906&seq=1749812104204&hash=66e71b607d3618ce410f67c7a1f136ec
