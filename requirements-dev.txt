@@ -1,0 +1,5 @@
+pytest
+pytest-cov
+# 可选：如果需要模拟/网络测试工具，添加：
+# requests-mock
+# responses
